@@ -1,7 +1,12 @@
 
+import os.path
+import sys
+sys.path.append("../linearalgebra")
+from vectors import *
+
 from collections import Counter
 from matplotlib import pyplot as plt
-
+import math
 
 # from Joel's repo
 
@@ -41,6 +46,58 @@ def median(L):
   else:
     return (sortedL[mid-1] + sortedL[mid])/2.0
 
+def quantile(L,p):
+  """return value that p% of data is less than"""
+  index = int(p*len(L))
+  return sorted(L)[index]
+
+def mode(L):
+  """return most-common value"""
+  counts = Counter(L)
+  maxc = max(counts.values())
+  mlist = []
+  for i,count in counts.items():
+    if count == maxc:
+      mlist.append(i)
+  return mlist
+
+def data_range(L):
+  """return max minus min"""
+  return max(L) - min(L)
+
+def de_mean(L):
+  """subtract mean from all of L, so new list has mean of 0"""
+  x_bar = mean(L)
+  return [x-x_bar for x in L]
+
+def variance(L):
+  """how a single variable deviates from the mean"""
+  # assumes L has at least 2 items
+  n = len(L)
+  deviations =de_mean(L)
+  result = sum_of_squares(deviations)/(n-1)
+  return result
+
+def standard_deviation(L):
+  return math.sqrt(variance(L))
+
+def interquartile_range(L):
+  """diff between 75th and 25th percentile"""
+  return quantile(L,0.75) - quantile(L,0.25)
+
+def covariance(L1,L2):
+  """how two variables vary in tandem from their means"""
+  n = len(L1)
+  return dot(de_mean(L1), de_mean(L2)) / (n-1)
+
+def correlation(x,y):
+  """1 means perfect correlation, -1 means perfect anit-correlation"""
+  stdx = standard_deviation(x)
+  stdy = standard_deviation(y)
+  if stdx>0 and stdy>0:
+    return covariance(x,y) / stdx / stdy
+  else:
+    return 0
 
 #############################################################
 
@@ -60,6 +117,44 @@ class TestStats(unittest.TestCase):
         m = median([1,2,3,4])
         self.assertAlmostEqual(m,2.5,places=1)
 
+    def test_quantile(self):
+        q = quantile(num_friends,.10)
+        self.assertEqual(q,1)
+        self.assertEqual(quantile(num_friends,.25),3)
+        self.assertEqual(quantile(num_friends,.75),9)
+        self.assertEqual(quantile(num_friends,.90),13)
+
+    def test_mode(self):
+        self.assertEqual(mode(num_friends),[6,1])
+        self.assertEqual(mode([2,2,2,3]),[2])
+        L = [1,2,3,4]
+        self.assertEqual(mode(L),L)
+        L = [1,4,2,3,4]
+        self.assertEqual(mode(L),[4])
+        self.assertEqual(mode([1]),[1])
+
+    def test_range(self):
+        self.assertEqual(data_range(num_friends),99)
+        self.assertEqual(data_range([1]),0)
+        self.assertEqual(data_range([1,2]),1)
+
+    def test_variance(self):
+        self.assertAlmostEqual(variance(num_friends),81.54,places=2)
+        self.assertAlmostEqual(standard_deviation(num_friends),9.03,places=2)
+        self.assertEqual(interquartile_range(num_friends),6)
+
+    def test_covariance(self):
+        self.assertAlmostEqual(covariance(num_friends,daily_minutes),22.43,places=2)
+    def test_correlation(self):
+        self.assertAlmostEqual(correlation(num_friends,daily_minutes),0.25,places=2)
+        # remove the outlier
+        L1 = num_friends.copy()
+        L1.pop(0)
+        L2 = daily_minutes.copy()
+        L2.pop(0)
+        self.assertAlmostEqual(correlation(L1,L2),0.57,places=2)
+
 if __name__ == '__main__':
     unittest.main()
 
+#############################################################
